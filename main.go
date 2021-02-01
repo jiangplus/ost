@@ -18,6 +18,10 @@ func getPath(path string) string {
 	return strings.TrimPrefix(path, "/")
 }
 
+func unmarkEtag(etag string) string {
+	return strings.ReplaceAll(etag, "\"", "")
+}
+
 func main() {
 	lsCmd := flag.NewFlagSet("ls", flag.ExitOnError)
 	getCmd := flag.NewFlagSet("get", flag.ExitOnError)
@@ -32,13 +36,9 @@ func main() {
 	abortmpCmd := flag.NewFlagSet("abortmp", flag.ExitOnError)
 	listmpCmd := flag.NewFlagSet("listmp", flag.ExitOnError)
 
-	set_acl_public := setaclCmd.Bool("acl-public", false, "Store objects with ACL allowing read for anyone.")
-	set_acl_private := setaclCmd.Bool("acl-private", false, "Store objects with default ACL allowing access for you only.")
-
 	switch os.Args[1] {
 	case "ls":
 		lsCmd.Parse(os.Args[2:])
-		fmt.Println(lsCmd.Args())
 		if len(lsCmd.Args()) == 0 {
 			svc, sess := CreateS3Client()
 			ListS3Bucket(sess, svc)
@@ -58,21 +58,19 @@ func main() {
 			if err != nil {
 				exitErrorf("Unable to list objects, %v", err)
 			}
-			log.Println("Objects:")
-
-			for _, o := range obj_result.Contents {
-				fmt.Printf("* %s %s %s\n",
-					aws.StringValue(o.Key), aws.StringValue(o.ETag), aws.TimeValue(o.LastModified))
+			fmt.Println("Objects:")
+			for _, o := range obj_result.CommonPrefixes {
+				fmt.Printf("s3://%s/%s\n", bucket,
+					aws.StringValue(o.Prefix))
 			}
 
-			for _, o := range obj_result.CommonPrefixes {
-				fmt.Printf("* %s\n",
-					aws.StringValue(o.Prefix))
+			for _, o := range obj_result.Contents {
+				fmt.Printf("%s %s %d s3://%s/%s\n", aws.TimeValue(o.LastModified), unmarkEtag(aws.StringValue(o.ETag)), aws.Int64Value(o.Size),
+					bucket, aws.StringValue(o.Key))
 			}
 		}
 	case "get":
 		getCmd.Parse(os.Args[2:])
-		fmt.Println(getCmd.Args())
 		if len(getCmd.Args()) != 2 {
 			log.Fatal("source and dest is required")
 		} else {
@@ -141,11 +139,10 @@ func main() {
 			if err != nil {
 				log.Fatalln("Failed to upload", local_file_path, err)
 			}
-			log.Println("Uploaded", local_file_path, result.Location)
+			fmt.Printf("Uploaded %s s3://%s/%s at %s", local_file_path, bucket, targetPath, result.Location)
 		}
 	case "rm":
 		rmCmd.Parse(os.Args[2:])
-		fmt.Println(rmCmd.Args())
 		if len(rmCmd.Args()) == 0 {
 			log.Fatal("s3 uri is required")
 		} else {
@@ -233,7 +230,10 @@ func main() {
 	case "modify":
 		modifyCmd.Parse(os.Args[2:])
 	case "setacl":
+		set_acl_public := setaclCmd.Bool("acl-public", false, "Store objects with ACL allowing read for anyone.")
+		set_acl_private := setaclCmd.Bool("acl-private", false, "Store objects with default ACL allowing access for you only.")
 		setaclCmd.Parse(os.Args[2:])
+
 		if len(setaclCmd.Args()) == 0 {
 			log.Fatal("s3 uri is required")
 		} else {
@@ -257,11 +257,11 @@ func main() {
 				permission = "private"
 			}
 
-			result, err := svc.PutObjectAcl(&s3.PutObjectAclInput{Bucket: aws.String(bucket), Key: aws.String(targetPath), ACL: aws.String(permission)})
+			_, err = svc.PutObjectAcl(&s3.PutObjectAclInput{Bucket: aws.String(bucket), Key: aws.String(targetPath), ACL: aws.String(permission)})
 			if err != nil {
-				exitErrorf("Unable to list objects, %v, %s, %s", err)
+				exitErrorf("Unable to set object acl, %v, %s, %s", err)
 			}
-			log.Println(result)
+			fmt.Println("ok")
 		}
 	case "sync":
 		syncCmd.Parse(os.Args[2:])
