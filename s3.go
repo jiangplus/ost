@@ -149,11 +149,11 @@ func RemoveObject(s3path string) {
 	bucket := s3url.Host
 	targetPath := getPath(s3url.Path)
 
-	result, err := svc.DeleteObject(&s3.DeleteObjectInput{Bucket: aws.String(bucket), Key: aws.String(targetPath)})
+	_, err = svc.DeleteObject(&s3.DeleteObjectInput{Bucket: aws.String(bucket), Key: aws.String(targetPath)})
 	if err != nil {
-		exitErrorf("Unable to list objects, %v, %s, %s", err)
+		exitErrorf("Unable to perform operations, %v", err)
 	}
-	log.Println(result)
+	fmt.Println("ok")
 }
 
 func ObjectInfo(s3path string) {
@@ -178,8 +178,10 @@ func ObjectInfo(s3path string) {
 		checkError(err)
 	}
 
+	// todo seperate message printing
+
 	fmt.Printf("%12s:\t%s\n", "Object", s3path)
-	fmt.Printf("%12s:\t%s%s\n", "URL", svc.Endpoint, s3url.Path)
+	fmt.Printf("%12s:\t%s%s\n", "URL", svc.Endpoint, s3url.Path) // todo error url should include bucket name
 	fmt.Printf("%12s:\t%d\n", "Size", aws.Int64Value(result.ContentLength))
 	fmt.Printf("%12s:\t%s\n", "Last Mod", result.LastModified)
 	fmt.Printf("%12s:\t%s\n", "MIME Type", aws.StringValue(result.ContentType))
@@ -225,7 +227,7 @@ func ListObjects(s3path string) {
 	if err != nil {
 		exitErrorf("Unable to list objects, %v", err)
 	}
-	fmt.Println("Objects:")
+
 	for _, o := range obj_result.CommonPrefixes {
 		fmt.Printf("s3://%s/%s\n", bucket,
 			aws.StringValue(o.Prefix))
@@ -327,11 +329,12 @@ func CopyObject(src string, dst string) {
 		exitErrorf("source and dest must be in the same bucket")
 	}
 
-	result, err := svc.CopyObject(&s3.CopyObjectInput{Bucket: aws.String(dstbucket), CopySource: aws.String(srcpath), Key: aws.String(dstpath)})
+	srcObject := fmt.Sprintf("/%s/%s", srcbucket, srcpath)
+	result, err := svc.CopyObject(&s3.CopyObjectInput{Bucket: aws.String(dstbucket), CopySource: aws.String(srcObject), Key: aws.String(dstpath)})
 	if err != nil {
-		exitErrorf("Unable to list objects, %v, %s, %s", err)
+		exitErrorf("Unable to perform operations, %v", err)
 	}
-	log.Println(result)
+	fmt.Println(result.CopyObjectResult)
 }
 
 func SetaclObject(s3path string, set_acl_public *bool, set_acl_private *bool) {
@@ -354,7 +357,7 @@ func SetaclObject(s3path string, set_acl_public *bool, set_acl_private *bool) {
 	} else {
 		permission = "private"
 	}
-
+    fmt.Println(permission)
 	_, err = svc.PutObjectAcl(&s3.PutObjectAclInput{Bucket: aws.String(bucket), Key: aws.String(targetPath), ACL: aws.String(permission)})
 	if err != nil {
 		exitErrorf("Unable to set object acl, %v, %s, %s", err)
@@ -397,9 +400,8 @@ func ListMultiParts(s3path string) {
 
 	result, err := svc.ListMultipartUploads(&s3.ListMultipartUploadsInput{Bucket: aws.String(bucket)})
 	if err != nil {
-		exitErrorf("Unable to list objects, %v, %s, %s", err)
+		exitErrorf("Unable to perform operations, %v", err)
 	}
-	log.Println(result)
 
 	fmt.Println("Initiated\tPath\tId")
 	for _, item := range result.Uploads {
@@ -419,11 +421,11 @@ func AbortMultiPart(s3path string, upload_id string) {
 	bucket := s3url.Host
 	path := getPath(s3url.Path)
 
-	result, err := svc.AbortMultipartUpload(&s3.AbortMultipartUploadInput{Bucket: aws.String(bucket), Key: aws.String(path), UploadId: aws.String(upload_id)})
+	_, err = svc.AbortMultipartUpload(&s3.AbortMultipartUploadInput{Bucket: aws.String(bucket), Key: aws.String(path), UploadId: aws.String(upload_id)})
 	if err != nil {
-		exitErrorf("Unable to list objects, %v, %s, %s", err)
+		exitErrorf("Unable to perform operations, %v", err)
 	}
-	log.Println(result)
+	fmt.Println("ok")
 }
 
 func MultiPartDetail(s3path string, upload_id string) {
@@ -438,11 +440,14 @@ func MultiPartDetail(s3path string, upload_id string) {
 	bucket := s3url.Host
 	path := getPath(s3url.Path)
 
+	if path == "" {
+		exitErrorf("Object key must be specified")
+	}
+
 	result, err := svc.ListParts(&s3.ListPartsInput{Bucket: aws.String(bucket), Key: aws.String(path), UploadId: aws.String(upload_id)})
 	if err != nil {
-		exitErrorf("Unable to list objects, %v, %s, %s", err)
+		exitErrorf("Unable to perform operations, %v", err)
 	}
-	log.Println(result)
 
 	fmt.Println("LastModified\t\t\tPartNumber\tETag\tSize")
 	for _, item := range result.Parts {
