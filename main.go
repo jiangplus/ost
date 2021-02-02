@@ -34,8 +34,7 @@ func main() {
 	case "ls":
 		lsCmd.Parse(os.Args[2:])
 		if len(lsCmd.Args()) == 0 {
-			svc, sess := CreateS3Client()
-			ListS3Bucket(sess, svc)
+			ListBuckets()
 		} else {
 			s3path := lsCmd.Arg(0)
 			ListObjects(s3path)
@@ -47,7 +46,6 @@ func main() {
 		} else {
 			local_file_path := getCmd.Arg(1)
 			s3path := getCmd.Arg(0)
-
 			GetObject(s3path, local_file_path)
 		}
 	case "put":
@@ -65,7 +63,7 @@ func main() {
 			log.Fatal("s3 uri is required")
 		} else {
 			s3path := rmCmd.Arg(0)
-			RmObject(s3path)
+			RemoveObject(s3path)
 		}
 	case "info":
 		infoCmd.Parse(os.Args[2:])
@@ -82,7 +80,6 @@ func main() {
 		} else {
 			src := cpCmd.Arg(0)
 			dst := cpCmd.Arg(1)
-
 			CopyObject(src, dst)
 		}
 	case "modify":
@@ -106,7 +103,6 @@ func main() {
 			srcpath := setaclCmd.Arg(0)
 			dstpath := setaclCmd.Arg(1)
 			SyncDir(srcpath, dstpath)
-
 		}
 	case "multipart":
 		multipartCmd.Parse(os.Args[2:])

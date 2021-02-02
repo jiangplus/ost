@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"log"
 	"net/url"
 	"os"
@@ -43,7 +44,8 @@ func CreateS3Client() (*s3.S3, *session.Session) {
 	return svc, sess
 }
 
-func ListS3Bucket(sess *session.Session, svc *s3.S3) {
+func ListBuckets() {
+	svc, _ := CreateS3Client()
 	bk_result, err := svc.ListBuckets(nil)
 	if err != nil {
 		exitErrorf("Unable to list buckets, %v", err)
@@ -135,7 +137,7 @@ func DownloadS3Dir(sess *session.Session, svc *s3.S3, src *url.URL, dst *url.URL
 	}
 }
 
-func RmObject(s3path string) {
+func RemoveObject(s3path string) {
 	svc, _ := CreateS3Client()
 	s3url, err := url.Parse(s3path)
 	if err != nil {
@@ -168,15 +170,44 @@ func ObjectInfo(s3path string) {
 
 	acl_result, err := svc.GetObjectAcl(&s3.GetObjectAclInput{Bucket: aws.String(bucket), Key: aws.String(targetPath)})
 	if err != nil {
-		exitErrorf("Unable to list objects, %v, %s, %s", err)
+		checkError(err)
 	}
-	log.Println(acl_result)
 
 	result, err := svc.HeadObject(&s3.HeadObjectInput{Bucket: aws.String(bucket), Key: aws.String(targetPath)})
 	if err != nil {
-		exitErrorf("Unable to list objects, %v, %s, %s", err)
+		checkError(err)
 	}
-	log.Println(result)
+
+	fmt.Printf("%12s:\t%s\n", "Object", s3path)
+	fmt.Printf("%12s:\t%s%s\n", "URL", svc.Endpoint, s3url.Path)
+	fmt.Printf("%12s:\t%d\n", "Size", aws.Int64Value(result.ContentLength))
+	fmt.Printf("%12s:\t%s\n", "Last Mod", result.LastModified)
+	fmt.Printf("%12s:\t%s\n", "MIME Type", aws.StringValue(result.ContentType))
+	fmt.Printf("%12s:\t%s\n", "MD5", unmarkEtag(*result.ETag))
+	for _, i := range acl_result.Grants {
+		var grantee string
+		if aws.StringValue(i.Grantee.Type) == "CanonicalUser" {
+			grantee = aws.StringValue(i.Grantee.ID)
+		} else if aws.StringValue(i.Grantee.Type) == "Group" {
+			grantee = aws.StringValue(i.Grantee.URI)
+		} else {
+			grantee = ""
+		}
+		fmt.Printf("%12s:\t%s: %s\n", "ACL", grantee, aws.StringValue(i.Permission))
+	}
+}
+
+func checkError(err error) {
+	if aerr, ok := err.(awserr.Error); ok {
+		switch aerr.Code() {
+		case s3.ErrCodeNoSuchKey:
+			exitErrorf("%s: %s", s3.ErrCodeNoSuchKey, aerr.Message())
+		default:
+			exitErrorf("aws error: %s", aerr.Error())
+		}
+	} else {
+		exitErrorf("other error: %s", aerr.Error())
+	}
 }
 
 func ListObjects(s3path string) {
