@@ -2,5 +2,6 @@
 .DS_Store
 
 /data/
+/tmp/
 /ost
 .env

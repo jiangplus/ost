@@ -100,9 +100,9 @@ func UploadS3Dir(sess *session.Session, svc *s3.S3, src *url.URL, dst *url.URL) 
 func DownloadS3Dir(sess *session.Session, svc *s3.S3, src *url.URL, dst *url.URL) {
 	bucket := src.Host
 	path := strings.TrimPrefix(src.Path, "/")
-	obj_result, err := svc.ListObjectsV2(&s3.ListObjectsV2Input{Bucket: aws.String(bucket), Prefix: aws.String(path), Delimiter: aws.String("/")})
+	obj_result, err := svc.ListObjectsV2(&s3.ListObjectsV2Input{Bucket: aws.String(bucket), Prefix: aws.String(path), Delimiter: aws.String("")})
 	if err != nil {
-		exitErrorf("Unable to list objects, %v, %s, %s", err, src, dst)
+		exitErrorf("Unable to list objects, %v", err)
 	}
 	log.Println("Objects:")
 	downloader := s3manager.NewDownloader(sess)

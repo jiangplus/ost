@@ -97,11 +97,11 @@ func main() {
 		}
 	case "sync":
 		syncCmd.Parse(os.Args[2:])
-		if len(getCmd.Args()) != 2 {
+		if len(syncCmd.Args()) != 2 {
 			log.Fatal("source and dest is required")
 		} else {
-			srcpath := setaclCmd.Arg(0)
-			dstpath := setaclCmd.Arg(1)
+			srcpath := syncCmd.Arg(0)
+			dstpath := syncCmd.Arg(1)
 			SyncDir(srcpath, dstpath)
 		}
 	case "multipart":
