@@ -17,6 +17,11 @@ func unmarkEtag(etag string) string {
 }
 
 func main() {
+	if len(os.Args) < 2 {
+		fmt.Println("expected subcommands to run")
+		os.Exit(0)
+	}
+
 	lsCmd := flag.NewFlagSet("ls", flag.ExitOnError)
 	getCmd := flag.NewFlagSet("get", flag.ExitOnError)
 	putCmd := flag.NewFlagSet("put", flag.ExitOnError)
@@ -44,18 +49,18 @@ func main() {
 		if len(getCmd.Args()) != 2 {
 			log.Fatal("source and dest is required")
 		} else {
-			local_file_path := getCmd.Arg(1)
+			localPath := getCmd.Arg(1)
 			s3path := getCmd.Arg(0)
-			GetObject(s3path, local_file_path)
+			GetObject(s3path, localPath)
 		}
 	case "put":
 		putCmd.Parse(os.Args[2:])
 		if len(putCmd.Args()) != 2 {
 			log.Fatal("source and dest is required")
 		} else {
-			local_file_path := putCmd.Arg(0)
+			localPath := putCmd.Arg(0)
 			s3path := putCmd.Arg(1)
-			PutObject(s3path, local_file_path)
+			PutObject(s3path, localPath)
 		}
 	case "rm":
 		rmCmd.Parse(os.Args[2:])
@@ -85,24 +90,24 @@ func main() {
 	case "modify":
 		modifyCmd.Parse(os.Args[2:])
 	case "setacl":
-		set_acl_public := setaclCmd.Bool("acl-public", false, "Store objects with ACL allowing read for anyone.")
-		set_acl_private := setaclCmd.Bool("acl-private", false, "Store objects with default ACL allowing access for you only.")
+		setPublic := setaclCmd.Bool("acl-public", false, "Store objects with ACL allowing read for anyone.")
+		setPrivate := setaclCmd.Bool("acl-private", false, "Store objects with default ACL allowing access for you only.")
 		setaclCmd.Parse(os.Args[2:])
 
 		if len(setaclCmd.Args()) == 0 {
 			log.Fatal("s3 uri is required")
 		} else {
 			s3path := setaclCmd.Arg(0)
-			SetaclObject(s3path, set_acl_public, set_acl_private)
+			SetaclObject(s3path, setPublic, setPrivate)
 		}
 	case "sync":
 		syncCmd.Parse(os.Args[2:])
 		if len(syncCmd.Args()) != 2 {
 			log.Fatal("source and dest is required")
 		} else {
-			srcpath := syncCmd.Arg(0)
-			dstpath := syncCmd.Arg(1)
-			SyncDir(srcpath, dstpath)
+			srcPath := syncCmd.Arg(0)
+			dstPath := syncCmd.Arg(1)
+			SyncDir(srcPath, dstPath)
 		}
 	case "multipart":
 		multipartCmd.Parse(os.Args[2:])
@@ -118,8 +123,8 @@ func main() {
 			log.Fatal("s3 uri is required")
 		} else {
 			s3path := abortmpCmd.Arg(0)
-			upload_id := abortmpCmd.Arg(1)
-			AbortMultiPart(s3path, upload_id)
+			uploadId := abortmpCmd.Arg(1)
+			AbortMultiPart(s3path, uploadId)
 		}
 	case "listmp":
 		listmpCmd.Parse(os.Args[2:])
@@ -127,8 +132,8 @@ func main() {
 			log.Fatal("s3 uri is required")
 		} else {
 			s3path := listmpCmd.Arg(0)
-			upload_id := listmpCmd.Arg(1)
-			MultiPartDetail(s3path, upload_id)
+			uploadId := listmpCmd.Arg(1)
+			MultiPartDetail(s3path, uploadId)
 		}
 	default:
 		fmt.Println("expected subcommands to run")
